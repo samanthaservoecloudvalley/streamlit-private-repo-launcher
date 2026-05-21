@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import shutil
 import streamlit as st
 
 # Retrieve secrets
@@ -11,17 +12,18 @@ target_script = st.secrets["PRIVATE_SCRIPT_NAME"]
 
 local_dir = "/tmp/private_repo"
 
-# Robust cloning logic with error tracking
-if not os.path.exists(local_dir):
-    clone_url = f"https://{username}:{token}@github.com/{username}/{repo_name}.git"
-    
-    # Capture stderr to catch authentication or repository path errors
-    result = subprocess.run(["git", "clone", clone_url, local_dir], capture_output=True, text=True)
-    
-    if result.returncode != 0:
-        st.error("### ❌ Git Clone Failed")
-        st.code(result.stderr, language="bash")
-        st.stop()
+# FORCE CLEAN CLONE: Clear old directories to prevent caching bugs
+if os.path.exists(local_dir):
+    shutil.rmtree(local_dir)
+
+# Now clone cleanly with the updated secrets
+clone_url = f"https://{username}:{token}@github.com/{username}/{repo_name}.git"
+result = subprocess.run(["git", "clone", clone_url, local_dir], capture_output=True, text=True)
+
+if result.returncode != 0:
+    st.error("### ❌ Git Clone Failed")
+    st.code(result.stderr, language="bash")
+    st.stop()
 
 # Execution context
 sys.path.append(local_dir)
