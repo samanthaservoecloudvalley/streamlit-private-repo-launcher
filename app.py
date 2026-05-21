@@ -31,7 +31,7 @@ private_requirements = os.path.join(local_dir, "requirements.txt")
 if os.path.exists(private_requirements):
     with st.spinner("Installing private repository dependencies... Please wait."):
         pip_result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-r", private_requirements],
+            [sys.executable, "-m", "pip", "install", "--user", "-r", private_requirements],
             capture_output=True,
             text=True
         )
