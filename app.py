@@ -3,27 +3,38 @@ import sys
 import subprocess
 import streamlit as st
 
-# 1. Fetch credentials securely from Streamlit Secrets
+# Retrieve secrets
 token = st.secrets["GITHUB_TOKEN"]
 username = st.secrets["GITHUB_USERNAME"]
 repo_name = st.secrets["PRIVATE_REPO_NAME"]
-target_script = st.secrets["PRIVATE_SCRIPT_NAME"] # e.g., "main_app.py"
+target_script = st.secrets["PRIVATE_SCRIPT_NAME"]
 
-# 2. Define local cloning destination
 local_dir = "/tmp/private_repo"
 
-# 3. Clone the private repository programmatically if it doesn't exist
+# Robust cloning logic with error tracking
 if not os.path.exists(local_dir):
     clone_url = f"https://{username}:{token}@github.com/{username}/{repo_name}.git"
-    subprocess.run(["git", "clone", clone_url, local_dir], check=True)
+    
+    # Capture stderr to catch authentication or repository path errors
+    result = subprocess.run(["git", "clone", clone_url, local_dir], capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        st.error("### ❌ Git Clone Failed")
+        st.code(result.stderr, language="bash")
+        st.stop()
 
-# 4. Append the private directory to Python path to resolve imports
+# Execution context
 sys.path.append(local_dir)
-
-# 5. Dynamically execute the private script
 private_script_path = os.path.join(local_dir, target_script)
+
+if not os.path.exists(private_script_path):
+    st.error(f"### ❌ File Not Found inside Container")
+    st.write(f"Expected path: `{private_script_path}`")
+    st.write("Available files in directory:")
+    st.code(os.listdir(local_dir))
+    st.stop()
+
 with open(private_script_path, "r") as f:
     code = f.read()
-    
-# Execute the private code within the current global context
+
 exec(code, globals())
